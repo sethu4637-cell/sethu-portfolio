@@ -1,0 +1,12 @@
+Place your resume PDF file here.
+
+File name must be exactly: resume.pdf
+
+Steps:
+1. Export your resume as a PDF file
+2. Rename it to resume.pdf
+3. Place it in this folder (assets/)
+4. The "Download Resume" button in the About section will work automatically
+
+The button in index.html links to: assets/resume.pdf
+

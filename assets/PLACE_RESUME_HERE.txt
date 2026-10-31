@@ -9,3 +9,4 @@ Steps:
 4. The "Download Resume" button in the About section will work automatically
 
 The button in index.html links to: assets/resume.pdf
+
