@@ -1,4 +1,4 @@
-g-- ==============================================================
+-- ==============================================================
 -- J. Sethuraman Portfolio Database Schema (MySQL)
 -- Safe migrations: uses CREATE TABLE IF NOT EXISTS
 -- ==============================================================
@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS contact_messages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL,
+    
     subject VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
     submitted_at DATETIME NOT NULL,

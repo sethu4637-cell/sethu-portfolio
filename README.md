@@ -137,10 +137,13 @@ The application will launch on port `8080` with the entire frontend pre-packaged
 
 ## 🔐 Admin Authentication & Credentials
 
+### Admin Login URLs
+- **GitHub Pages (Live):** `https://sethu4637-cell.github.io/sethu-portfolio/admin/login.html`
+- **Local Development:** `http://localhost:8080/admin/login.html`
+
 ### Local Development Credentials
 - **Username:** `sethu_admin`
 - **Password:** `sethu@2026!`
-- **Login URL:** `http://localhost:8080/admin/login.html`
 
 ### How It Works
 - The password is stored as a **BCrypt hash** (cost factor 12) inside `application.properties`:
@@ -246,13 +249,27 @@ export DB_PASSWORD="<your-db-password>"
 export ADMIN_USERNAME="<your-production-admin-username>"
 export ADMIN_PASSWORD_HASH="<your-bcrypt-hashed-password>"
 
+# Render / GitHub Pages Cross-Origin HTTPS Session Cookies
+export SESSION_COOKIE_SECURE="true"
+export SESSION_COOKIE_SAME_SITE="none"
+
 # Server Port (optional, default 8080)
 export PORT="8080"
 ```
 
+### GitHub Pages & Render Deployment Architecture
+1. **Frontend (GitHub Pages):** Hosted at `https://sethu4637-cell.github.io/sethu-portfolio/`.
+   - Admin Login page: `/sethu-portfolio/admin/login.html`
+   - Admin Dashboard: `/sethu-portfolio/admin/dashboard.html`
+   - Configured in `js/config.js` to communicate with the Spring Boot backend on Render.
+2. **Backend (Render):** Deploy the Spring Boot application (Docker or Web Service).
+   - Set environment variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`.
+   - Set `SESSION_COOKIE_SECURE=true` and `SESSION_COOKIE_SAME_SITE=none` so session cookies work cross-site with GitHub Pages.
+   - CORS is pre-configured to accept requests from `https://sethu4637-cell.github.io` and `https://*.github.io`.
+
 ### Production Checklist
-1. Enable HTTPS on your domain and set `server.servlet.session.cookie.secure=true` in `application.properties`.
-2. Update the allowed CORS origins in `SecurityConfig.java` to your custom domain (`https://sethuraman.dev`).
+1. Enable HTTPS and verify `SESSION_COOKIE_SECURE=true` and `SESSION_COOKIE_SAME_SITE=none` on Render.
+2. Update the default backend URL in `js/config.js` with your active Render web service URL (or set it via the Admin Login URL modal).
 3. Set `spring.jpa.hibernate.ddl-auto=validate` or `none` after initial migration for strict schema governance.
 
 ---

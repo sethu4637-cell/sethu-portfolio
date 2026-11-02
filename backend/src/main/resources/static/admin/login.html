@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Login | J. Sethuraman Portfolio</title>
     <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="../js/config.js"></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -227,6 +229,42 @@
         display: flex; align-items: center; justify-content: center; gap: 0.4rem;
       }
 
+      .server-badge {
+        margin-top: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        font-size: 0.73rem;
+        color: var(--text-secondary);
+        flex-wrap: wrap;
+      }
+
+      .server-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #22c55e;
+        display: inline-block;
+        flex-shrink: 0;
+      }
+      .server-dot.render { background: #06b6d4; }
+      .server-dot.pending { background: #f59e0b; }
+      .server-dot.error { background: #ef4444; }
+
+      .btn-server-cfg {
+        background: none;
+        border: none;
+        color: var(--primary);
+        font-size: 0.73rem;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        font-family: inherit;
+        transition: color 0.15s;
+      }
+      .btn-server-cfg:hover { color: #60a5fa; }
+
       /* Responsive */
       @media (max-width: 480px) {
         .login-card { padding: 2rem 1.25rem; }
@@ -327,9 +365,14 @@
           </svg>
           Protected by BCrypt &amp; Spring Security
         </div>
+        <div class="server-badge" id="server-badge">
+          <span class="server-dot" id="server-dot"></span>
+          <span id="server-status-text">Backend: Connecting…</span>
+          <button type="button" class="btn-server-cfg" id="btn-edit-server" aria-label="Configure backend server URL">Change URL</button>
+        </div>
       </div>
 
-      <a href="/" class="back-link" aria-label="Back to portfolio">
+      <a href="../index.html" class="back-link" aria-label="Back to portfolio">
         ← Back to Portfolio
       </a>
     </main>
@@ -338,23 +381,68 @@
     (function () {
       "use strict";
 
-      const form      = document.getElementById("login-form");
+      const form       = document.getElementById("login-form");
       const usernameEl = document.getElementById("username");
       const passwordEl = document.getElementById("password");
       const loginBtn   = document.getElementById("login-btn");
       const alertBox   = document.getElementById("login-alert");
       const togglePw   = document.getElementById("toggle-pw");
 
-      const API_BASE = (window.location.protocol === "file:")
-        ? "http://localhost:8080/api"
-        : "/api";
+      function resolveApiBase() {
+        if (window.PORTFOLIO_CONFIG && typeof window.PORTFOLIO_CONFIG.getApiBaseUrl === "function") {
+          return window.PORTFOLIO_CONFIG.getApiBaseUrl();
+        }
+        if (window.location.protocol === "file:") return "http://localhost:8080/api";
+        if (window.location.hostname.endsWith("github.io")) {
+          return "https://sethu-portfolio-backend.onrender.com/api";
+        }
+        return "/api";
+      }
 
-      // If already logged in, redirect straight to dashboard
+      const API_BASE = resolveApiBase();
+
+      /* ------- Update backend server indicator in UI ------- */
+      (function updateServerIndicator() {
+        const dot = document.getElementById("server-dot");
+        const text = document.getElementById("server-status-text");
+        if (!text) return;
+        const rootUrl = API_BASE.replace(/\/api$/, "");
+        const isRender = rootUrl.includes("render.com");
+        const isLocal = rootUrl.includes("localhost") || rootUrl.includes("127.0.0.1");
+        const label = isRender ? "Render Backend" : (isLocal ? "Local Backend" : "Spring Boot Backend");
+        text.textContent = label + ": " + rootUrl;
+        text.title = "Target API: " + API_BASE;
+        if (dot) {
+          dot.className = isRender ? "server-dot render" : "server-dot";
+        }
+      })();
+
+      /* ------- Backend URL Configuration Dialog ------- */
+      const editBtn = document.getElementById("btn-edit-server");
+      if (editBtn) {
+        editBtn.addEventListener("click", function () {
+          const current = (window.PORTFOLIO_CONFIG && window.PORTFOLIO_CONFIG.getCustomBackendUrl()) || API_BASE.replace(/\/api$/, "");
+          const entered = prompt(
+            "Enter your Spring Boot backend URL (e.g. deployed on Render):\nLeave empty to reset to default.",
+            current
+          );
+          if (entered !== null) {
+            if (window.PORTFOLIO_CONFIG) {
+              window.PORTFOLIO_CONFIG.setCustomBackendUrl(entered);
+            } else {
+              if (!entered.trim()) localStorage.removeItem("sethu_portfolio_backend_url");
+              else localStorage.setItem("sethu_portfolio_backend_url", entered.trim());
+            }
+            window.location.reload();
+          }
+        });
+      }
+
+      /* ------- Check existing session ------- */
       fetch(API_BASE + "/admin/me", { credentials: "include" })
         .then(function (res) {
           if (res.ok) {
-            const isFile = window.location.protocol === "file:";
-            window.location.href = isFile ? "dashboard.html" : "/admin/dashboard";
+            window.location.href = "dashboard.html";
           }
         })
         .catch(function () {});
@@ -446,8 +534,7 @@
           if (resp.ok && data && data.success) {
             showAlert("Login successful! Redirecting to dashboard…", "success");
             setTimeout(function () {
-              const isFile = window.location.protocol === "file:";
-              window.location.href = isFile ? "dashboard.html" : "/admin/dashboard";
+              window.location.href = "dashboard.html";
             }, 800);
           } else {
             const msg = (data && data.message) ? data.message : "Invalid username or password.";
@@ -456,7 +543,11 @@
             passwordEl.focus();
           }
         } catch (err) {
-          showAlert("Could not connect to the server. Make sure the backend is running.", "error");
+          const isRender = API_BASE.includes("render.com");
+          const note = isRender
+            ? "Could not reach the Spring Boot backend on Render. Render free tier takes 30-50s to wake up on cold start. Please wait a moment and try again."
+            : "Could not connect to the backend server at " + API_BASE + ". Make sure the Spring Boot backend is running.";
+          showAlert(note, "error");
         } finally {
           loginBtn.classList.remove("loading");
           loginBtn.disabled = false;

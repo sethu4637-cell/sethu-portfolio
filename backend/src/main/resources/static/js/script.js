@@ -642,7 +642,9 @@ function initContactForm() {
       message: messageInput.value.trim()
     };
 
-    const apiBase = (window.location.protocol === "file:") ? "http://localhost:8080/api" : "/api";
+    const apiBase = (window.PORTFOLIO_CONFIG && typeof window.PORTFOLIO_CONFIG.getApiBaseUrl === "function")
+      ? window.PORTFOLIO_CONFIG.getApiBaseUrl()
+      : ((window.location.protocol === "file:") ? "http://localhost:8080/api" : "/api");
 
     fetch(apiBase + "/contact", {
       method: "POST",
@@ -849,9 +851,9 @@ function debounce(fn, delay) {
     // Use a session-flag to avoid double-counting on React-style remounts
     if (sessionStorage.getItem("portfolio_visit_recorded")) return;
 
-    var apiBase = (window.location.protocol === "file:")
-      ? "http://localhost:8080/api"
-      : "/api";
+    var apiBase = (window.PORTFOLIO_CONFIG && typeof window.PORTFOLIO_CONFIG.getApiBaseUrl === "function")
+      ? window.PORTFOLIO_CONFIG.getApiBaseUrl()
+      : ((window.location.protocol === "file:") ? "http://localhost:8080/api" : "/api");
 
     fetch(apiBase + "/visitors", {
       method: "POST",

@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard | J. Sethuraman Portfolio</title>
     <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script src="../js/config.js"></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -320,7 +322,7 @@
           </svg>
           Visitors
         </a>
-        <a href="/" class="nav-item" id="nav-portfolio" title="Open Portfolio Website">
+        <a href="../index.html" class="nav-item" id="nav-portfolio" title="Open Portfolio Website">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
           </svg>
@@ -456,9 +458,18 @@
     (function () {
       "use strict";
 
-      const API_BASE = (window.location.protocol === "file:")
-        ? "http://localhost:8080/api"
-        : "/api";
+      function resolveApiBase() {
+        if (window.PORTFOLIO_CONFIG && typeof window.PORTFOLIO_CONFIG.getApiBaseUrl === "function") {
+          return window.PORTFOLIO_CONFIG.getApiBaseUrl();
+        }
+        if (window.location.protocol === "file:") return "http://localhost:8080/api";
+        if (window.location.hostname.endsWith("github.io")) {
+          return "https://sethu-portfolio-backend.onrender.com/api";
+        }
+        return "/api";
+      }
+
+      const API_BASE = resolveApiBase();
 
       /* ---- Helper: format numbers ---- */
       function fmt(n) {
@@ -484,21 +495,33 @@
 
       /* ---- Redirect helper ---- */
       function redirectToLogin() {
-        const isFile = window.location.protocol === "file:";
-        window.location.href = isFile ? "login.html" : "/admin/login";
+        window.location.href = "login.html";
       }
 
       /* ---- Redirect if not authenticated ---- */
       async function checkAuth() {
         try {
           const resp = await fetch(API_BASE + "/admin/me", { credentials: "include" });
-          if (!resp.ok) throw new Error("Unauthorized");
+          if (resp.status === 401) {
+            redirectToLogin();
+            return false;
+          }
+          if (!resp.ok) throw new Error("Server error HTTP " + resp.status);
           const data = await resp.json();
           document.getElementById("admin-name-display").textContent = data.username || "Admin";
           const initial = (data.username || "A").charAt(0).toUpperCase();
           document.getElementById("admin-avatar").textContent = initial;
+          return true;
         } catch (e) {
-          redirectToLogin();
+          console.warn("Auth check error:", e);
+          const lastUpdated = document.getElementById("last-updated");
+          const isRender = API_BASE.includes("render.com");
+          if (lastUpdated) {
+            lastUpdated.innerHTML = isRender
+              ? '<span style="color:#f59e0b;">Backend connecting… Render free tier spin-up can take 30-50s.</span> <button onclick="location.reload()" style="background:#3b82f6;border:none;color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;margin-left:6px;">Retry</button>'
+              : '<span style="color:#ef4444;">Could not reach backend at ' + API_BASE + '</span> <button onclick="location.reload()" style="background:#3b82f6;border:none;color:#fff;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;margin-left:6px;">Retry</button>';
+          }
+          return false;
         }
       }
 
@@ -522,11 +545,18 @@
           renderMessages(data.recentMessages || []);
 
           const now = new Date();
+          const isRender = API_BASE.includes("render.com");
           document.getElementById("last-updated").textContent =
-            "Last updated: " + now.toLocaleTimeString("en-IN");
+            "Last updated: " + now.toLocaleTimeString("en-IN") + (isRender ? " (Render Backend)" : "");
 
         } catch (e) {
-          document.getElementById("last-updated").textContent = "Error loading data. Is the backend running?";
+          const lastUpdated = document.getElementById("last-updated");
+          if (lastUpdated) {
+            const isRender = API_BASE.includes("render.com");
+            lastUpdated.innerHTML = isRender
+              ? '<span style="color:#f59e0b;">Unable to load data. Render backend may still be starting up…</span>'
+              : '<span style="color:#ef4444;">Error loading data. Is the backend running?</span>';
+          }
           console.error("Dashboard load error:", e);
         }
       }
@@ -664,8 +694,10 @@
 
       /* ---- Init ---- */
       async function init() {
-        await checkAuth();
-        await loadDashboard();
+        const authed = await checkAuth();
+        if (authed) {
+          await loadDashboard();
+        }
       }
 
       init();

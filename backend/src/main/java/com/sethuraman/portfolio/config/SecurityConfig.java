@@ -173,12 +173,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // For local development: allow file:// and localhost origins
+        // Allowed origins for local dev, GitHub Pages, and Render
         config.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
             "http://127.0.0.1:*",
-            "null",                // For file:// protocol in local development
-            "https://*.sethuraman-portfolio.com"  // Update with your production domain
+            "null",                                // For file:// protocol in local development
+            "https://sethu4637-cell.github.io",     // Official GitHub Pages site
+            "https://*.github.io",                 // GitHub Pages wildcard
+            "https://*.onrender.com",              // Render backend/frontend wildcard
+            "https://*.sethuraman-portfolio.com"   // Custom domain if configured
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
